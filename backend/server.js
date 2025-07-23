@@ -2,6 +2,7 @@ const express = require("express");
 const dotenv = require("dotenv");
 const { default: mongoose } = require("mongoose");
 const userRoutes = require("./routes/user.route.js");
+const cookieParser = require("cookie-parser");
 
 const app = express();
 dotenv.config();
@@ -20,6 +21,7 @@ connectDB();
 
 //MiddleWare
 app.use(express.json());
+app.use(cookieParser());
 
 //API Routes
 app.use("/api/user", userRoutes);
