@@ -1,14 +1,17 @@
 import bg from "../assets/authBg.png";
 import { IoEye } from "react-icons/io5";
 import { IoMdEyeOff } from "react-icons/io";
-import { useState } from "react";
+import { useContext, useState } from "react";
 import { useForm } from "react-hook-form";
 import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
+import { toast } from "react-toastify";
+import { userDataContext } from "../context/UserContext";
 
 const SignIn = () => {
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
+  const { serverUrl } = useContext(userDataContext);
 
   const {
     register,
@@ -17,16 +20,21 @@ const SignIn = () => {
   } = useForm();
 
   const onSubmit = async (data) => {
+    // console.log(data)
     try {
-      const res = await axios.post("/api/auth/signin", data, {
+      const res = await axios.post(`${serverUrl}/api/user/login`, data, {
         withCredentials: true
       });
 
       if (res.status === 200) {
-        navigate("/"); // or /dashboard
+        toast.success("Login successful!");
+        navigate("/"); // redirect
       }
     } catch (err) {
       console.error(err);
+      const message =
+        err.response?.data?.message || "Login failed. Please try again.";
+      toast.error(message);
     }
   };
 
@@ -68,7 +76,7 @@ const SignIn = () => {
             {...register("password", {
               required: "Password is required",
               minLength: {
-                value: 6,
+                value: 5,
                 message: "Minimum 6 characters required"
               }
             })}

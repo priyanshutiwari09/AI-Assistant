@@ -1,14 +1,17 @@
 import bg from "../assets/authBg.png";
 import { IoEye } from "react-icons/io5";
 import { IoMdEyeOff } from "react-icons/io";
-import { useState } from "react";
+import { useContext, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import axios from "axios";
+import { userDataContext } from "../context/UserContext";
+import { toast } from "react-toastify";
 
 const SignUp = () => {
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
+  const { serverUrl } = useContext(userDataContext);
 
   const {
     register,
@@ -17,21 +20,33 @@ const SignUp = () => {
     formState: { errors }
   } = useForm();
 
+  const password = watch("password");
+
   const onSubmit = async (data) => {
+    const { confirmPassword, ...userData } = data;
+
+    // Extra safety check in frontend
+    if (data.password !== data.confirmPassword) {
+      return toast.error("Passwords do not match");
+    }
+
     try {
-      const res = await axios.post("/api/auth/signup", data, {
+      const res = await axios.post(`${serverUrl}/api/user/signup`, data, {
         withCredentials: true
       });
 
       if (res.status === 201) {
-        navigate("/signin");
+        toast.success("Signup successful!");
+        setTimeout(() => navigate("/signin"), 1000);
       }
     } catch (err) {
+      const msg =
+        err?.response?.data?.message ||
+        "Something went wrong. Please try again.";
+      toast.error(msg);
       console.error(err);
     }
   };
-
-  const password = watch("password");
 
   return (
     <div
