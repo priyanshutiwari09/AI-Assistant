@@ -1,24 +1,28 @@
-import { useState } from "react";
-import { createContext } from "react";
+import { createContext, useEffect, useState } from "react";
 import axios from "axios";
-import { useEffect } from "react";
 
+// Create context
 export const userDataContext = createContext();
 
 const UserContext = ({ children }) => {
   const serverUrl = "http://localhost:5000";
+
   const [userData, setUserData] = useState(null);
+  const [loading, setLoading] = useState(true); // added loading state
+  const [frontendImage, setFrontendImage] = useState(null);
+  const [backendImage, setBackendImage] = useState(null);
+  const [selectedImage, setSelectedImage] = useState(null);
 
   const handleCurrentUser = async () => {
     try {
       const res = await axios.get(`${serverUrl}/api/user/current`, {
         withCredentials: true
       });
-
       setUserData(res.data);
-      // console.log(userData);
     } catch (err) {
-      console.log(err);
+      console.error("Failed to fetch current user:", err);
+    } finally {
+      setLoading(false); // ensure loading is turned off even on error
     }
   };
 
@@ -26,20 +30,31 @@ const UserContext = ({ children }) => {
     handleCurrentUser();
   }, []);
 
-  // 👇 log userData when it actually changes
+  // Debug log when userData changes
   useEffect(() => {
-    console.log("Updated userData:", userData);
+    if (userData !== null) {
+      console.log("Updated userData:", userData);
+    }
   }, [userData]);
 
+  // Context value
   const value = {
-    serverUrl
+    serverUrl,
+    userData,
+    setUserData,
+    loading,
+    frontendImage,
+    setFrontendImage,
+    backendImage,
+    setBackendImage,
+    selectedImage,
+    setSelectedImage
   };
+
   return (
-    <div>
-      <userDataContext.Provider value={value}>
-        {children}
-      </userDataContext.Provider>
-    </div>
+    <userDataContext.Provider value={value}>
+      {children}
+    </userDataContext.Provider>
   );
 };
 

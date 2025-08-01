@@ -11,7 +11,7 @@ import { userDataContext } from "../context/UserContext";
 const SignIn = () => {
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
-  const { serverUrl } = useContext(userDataContext);
+  const { serverUrl, setUserData } = useContext(userDataContext);
 
   const {
     register,
@@ -20,7 +20,6 @@ const SignIn = () => {
   } = useForm();
 
   const onSubmit = async (data) => {
-    // console.log(data)
     try {
       const res = await axios.post(`${serverUrl}/api/user/login`, data, {
         withCredentials: true
@@ -28,19 +27,22 @@ const SignIn = () => {
 
       if (res.status === 200) {
         toast.success("Login successful!");
-        navigate("/"); // redirect
+        setUserData(res.data);
+        localStorage.setItem("userData", JSON.stringify(res.data)); // optional
+        navigate("/");
       }
     } catch (err) {
-      console.error(err);
+      console.error("Login error:", err);
       const message =
         err.response?.data?.message || "Login failed. Please try again.";
       toast.error(message);
+      setUserData(null);
     }
   };
 
   return (
     <div
-      className="w-full h-[100vh] bg-cover bg-center flex justify-center items-center"
+      className="w-full h-screen bg-cover bg-center flex justify-center items-center"
       style={{ backgroundImage: `url(${bg})` }}
     >
       <form
@@ -77,7 +79,7 @@ const SignIn = () => {
               required: "Password is required",
               minLength: {
                 value: 5,
-                message: "Minimum 6 characters required"
+                message: "Minimum 5 characters required"
               }
             })}
             className="w-full outline-none h-full bg-transparent text-white placeholder-gray-300 px-[20px] py-[10px] rounded-full"
