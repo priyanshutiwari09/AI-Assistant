@@ -1,6 +1,7 @@
 const User = require("../models/user.model");
 const bcrypt = require("bcrypt");
 const genToken = require("../config/token");
+const uploadOnClodinary = require("../config/cloudinary.js");
 
 // Sign up controller
 exports.signup = async (req, res) => {
@@ -96,5 +97,31 @@ exports.getCurrentUser = async (req, res) => {
     return res.status(200).json(user);
   } catch (err) {
     return res.status(500), json({ message: "Get current user error" });
+  }
+};
+
+exports.updateAssistant = async (req, res) => {
+  try {
+    const { assistantName, imageUrl } = req.body;
+    let assistantImage;
+
+    if (req.file) {
+      assistantImage = await uploadOnClodinary(req.file.path);
+    } else {
+      assistantImage = imageUrl;
+    }
+
+    const user = await User.findByIdAndUpdate(
+      req.userId,
+      {
+        assistantName,
+        assistantImage
+      },
+      { new: true }
+    ).select("-password");
+
+    return req.status(200).json(user);
+  } catch (err) {
+    return res.status(400).json({ message: "update assistant error" });
   }
 };
