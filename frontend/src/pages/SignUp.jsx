@@ -23,9 +23,9 @@ const SignUp = () => {
   const password = watch("password");
 
   const onSubmit = async (data) => {
-    if (data.password !== data.confirmPassword) {
-      return toast.error("Passwords do not match");
-    }
+    // if (data.password !== data.confirmPassword) {
+    //   return toast.error("Passwords do not match");
+    // }
 
     const { confirmPassword, ...safeData } = data;
 

@@ -24,6 +24,8 @@ const Card = ({ image }) => {
         }`}
       onClick={() => {
         setSelectedImage(image);
+        setBackendImage(null);
+        setFrontendImage(null);
       }}
     >
       <img src={image} className="h-full object-cover" />
