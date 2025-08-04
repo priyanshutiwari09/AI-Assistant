@@ -5,7 +5,8 @@ const uploadOnClodinary = require("../config/cloudinary.js");
 
 // Sign up controller
 exports.signup = async (req, res) => {
-  const { name, email, password, confirmPassword } = req.body;
+  const { name, email, password } = req.body;
+  console.log("Signup request body:", req.body);
 
   try {
     const existingUser = await User.findOne({ email });
@@ -13,11 +14,11 @@ exports.signup = async (req, res) => {
     if (existingUser)
       return res.status(400).json({ message: "Email already exists" });
 
-    if (password !== confirmPassword) {
-      return res
-        .status(400)
-        .json({ message: "Password & Confirm Password do not match" });
-    }
+    // if (password !== confirmPassword) {
+    //   return res
+    //     .status(400)
+    //     .json({ message: "Password & Confirm Password do not match" });
+    // }
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -89,7 +90,7 @@ exports.logout = async (req, res) => {
 exports.getCurrentUser = async (req, res) => {
   try {
     const userId = req.userId;
-    const user = await User.findById(userId).select("-pasword");
+    const user = await User.findById(userId).select("-password");
 
     if (!user) {
       return res.status(400).json({ message: "User not found" });
@@ -120,7 +121,7 @@ exports.updateAssistant = async (req, res) => {
       { new: true }
     ).select("-password");
 
-    return req.status(200).json(user);
+    return res.status(200).json(user);
   } catch (err) {
     return res.status(400).json({ message: "update assistant error" });
   }

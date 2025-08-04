@@ -16,7 +16,14 @@ const userSchema = mongoose.Schema(
       type: String,
       required: true,
       minLength: 5
-    }
+    },
+    assistantName: {
+      type: String
+    },
+    assistantImage: {
+      type: String
+    },
+    history: [{ type: String }]
   },
   {
     timestamps: true
