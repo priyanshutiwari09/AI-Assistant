@@ -15,6 +15,7 @@ const Customize2 = () => {
   const navigate = useNavigate();
 
   const handleUpdateAssistant = async () => {
+    setLoading(true);
     try {
       let formData = new FormData();
 
@@ -35,9 +36,12 @@ const Customize2 = () => {
           withCredentials: true // ← this is critical!
         }
       );
+      setLoading(false);
       console.log(result.data);
       setUserData(result.data);
+      navigate("/");
     } catch (error) {
+      setLoading(false);
       console.log(error);
     }
   };
