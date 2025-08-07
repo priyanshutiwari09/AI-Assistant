@@ -139,7 +139,7 @@ exports.askToAssistant = async (req, res) => {
 
     const result = await geminiResponse(command, userName, assistantName);
 
-    const jsonMatch = result.match(/{[\s\S]*}/);
+    const jsonMatch = result.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
       return res.status(400).json({ message: "Sorry, i can't understand" });
     }
