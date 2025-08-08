@@ -2,9 +2,11 @@ import { useContext } from "react";
 import { userDataContext } from "../context/UserContext";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import { useEffect } from "react";
 
 const Home = () => {
-  const { userData, serverUrl, setUserData } = useContext(userDataContext);
+  const { userData, serverUrl, setUserData, getGeminiResponse } =
+    useContext(userDataContext);
   const navigate = useNavigate();
 
   const handleLogout = async () => {
@@ -20,6 +22,69 @@ const Home = () => {
       console.log(err);
     }
   };
+
+  const speak = (text) => {
+    const utterence = new SpeechSynthesisUtterance(text);
+    window.speechSynthesis.speak(utterence);
+  };
+
+  const handleCommand = (data) => {
+    const { type, userInput, response } = data;
+    speak(response);
+
+    if (type === "google_search") {
+      const query = encodeURIComponent(userInput);
+      window.open(`https://www.google.com/search?q=${query}`, "_blank");
+    }
+
+    if (type === "calculator_open") {
+      window.open(`https://www.google.com/search?q=calculator`, "_blank");
+    }
+
+    if (type === "instagram_open") {
+      window.open(`https://www.instagram.com/`, "_blank");
+    }
+
+    if (type === "facebook_open") {
+      window.open(`https://www.facebook.com/`, "_blank");
+    }
+
+    if (type === "weather_show") {
+      window.open(`https://www.google.com/search?q=weather`, "_blank");
+    }
+
+    if (type === "youtube_search" || type === "youtube_play") {
+      const query = encodeURIComponent(userInput);
+      window.open(
+        `https://wwww.youtube.com/results?search_query=${query}, '_blank`
+      );
+    }
+  };
+  useEffect(() => {
+    const SpeechRecognition =
+      window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    const recognition = new SpeechRecognition();
+
+    recognition.continuous = true;
+    recognition.lang = "en-US";
+
+    recognition.onresult = async (e) => {
+      const transcript = e.results[e.results.length - 1][0].transcript.trim();
+      console.log(transcript);
+
+      if (
+        transcript.toLowerCase().includes(userData.assistantName.toLowerCase())
+      ) {
+        const data = await getGeminiResponse(transcript);
+        console.log(data);
+        handleCommand(data);
+      }
+    };
+
+    recognition.start();
+  }, []);
+
   return (
     <div className="w-full gap-[15px] h-[100vh] bg-gradient-to-t from-[black] to-[#02023d] flex justify-center items-center flex-col relative">
       <button
