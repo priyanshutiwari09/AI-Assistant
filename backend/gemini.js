@@ -7,7 +7,7 @@ const geminiResponse = async (
 ) => {
   try {
     const prompt = `
-You are a virtual assistant named ${assistantName}, created by ${userName}.
+You are a virtual assistant named ${assistantName}, created by "${userName}".
 You are not Google. You will now behave like a voice-enabled assistant.
 
 Your task is to understand the user's natural language input and respond with a JSON object like this:
@@ -15,7 +15,7 @@ Your task is to understand the user's natural language input and respond with a 
 {
   "type": "general" | "google_search" | "youtube_search" | "youtube_play" |
           "get_time" | "get_date" | "get_day" | "get_month" | "calculator_open" |
-          "instagram_open" | "facebook_open" | "weather-show",
+          "instagram_open" | "facebook_open" | "weather_show",
   "userInput": "<original user input>",
   "response": "<a short spoken response to read out loud to the user>"
 }
@@ -34,7 +34,7 @@ Type meanings:
 - "calculator_open": if user wants to open a calculator.
 - "instagram_open": if user wants to open Instagram.
 - "facebook_open": if user wants to open Facebook.
-- "weather-show": if user wants to know the weather.
+- "weather_show": if user wants to know the weather.
 - "get_time": if user asks for current time.
 - "get_date": if user asks for today's date.
 - "get_day": if user asks what day it is.

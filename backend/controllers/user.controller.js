@@ -148,42 +148,42 @@ exports.askToAssistant = async (req, res) => {
     const type = gemResult.type;
 
     switch (type) {
-      case "get-date":
+      case "get_date":
         return res.json({
           type,
           userInput: gemResult.userInput,
           response: `Current date is ${moment().format("YYYY-MM-DD")}`
         });
 
-      case "get-time":
+      case "get_time":
         return res.json({
           type,
           userInput: gemResult.userInput,
           response: `Current time is ${moment().format("hh:mm:A")}`
         });
 
-      case "get-day":
+      case "get_day":
         return res.json({
           type,
           userInput: gemResult.userInput,
           response: `Today is ${moment().format("dddd")}`
         });
 
-      case "get-month":
+      case "get_month":
         return res.json({
           type,
           userInput: gemResult.userInput,
           response: `Current month is ${moment().format("YMMMM")}`
         });
 
-      case "google-search":
-      case "youtube-search":
+      case "google_search":
+      case "youtube_search":
       case "youtube_play":
       case "general":
       case "calculator_open":
       case "instagram_open":
       case "facebook_open":
-      case "weather-show":
+      case "weather_show":
         return res.json({
           type,
           userInput: gemResult.userInput,
