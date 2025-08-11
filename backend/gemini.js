@@ -23,8 +23,10 @@ Your task is to understand the user's natural language input and respond with a 
 Instructions:
 
 - "type": determine the intent of the user.
-- "userinput": original sentence the user spoke. Only remove your name (${assistantName}) if it appears.
-- "response": a short voice-friendly reply, e.g., "Sure, playing it now", "Here's what I found", "Today is Tuesday", etc.
+- "userInput": the original sentence the user spoke. Only remove your name (${assistantName}) if it appears.
+- "response":
+  - For "general": give a **clear, concise, and friendly spoken explanation** that answers the question directly in under 50 words.
+  - For other types: a short natural spoken confirmation like "Sure, opening Instagram" or "Playing your video now."
 
 Type meanings:
 - "general": if it's a factual or informational question.
