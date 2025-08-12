@@ -1,4 +1,4 @@
-import { useContext, useState, useEffect } from "react";
+import { useContext, useState, useEffect, useRef } from "react";
 import { userDataContext } from "../context/UserContext";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
@@ -8,18 +8,27 @@ const Home = () => {
     useContext(userDataContext);
   const navigate = useNavigate();
 
-  const [isStarted, setIsStarted] = useState(false); // show/hide start UI
-  let voices = [];
+  const [isStarted, setIsStarted] = useState(false);
+  const [showMicPrompt, setShowMicPrompt] = useState(false);
+  const voicesRef = useRef([]);
+  const recognitionRef = useRef(null);
+  const isListeningRef = useRef(false);
+  const checkIntervalRef = useRef(null);
 
-  speechSynthesis.onvoiceschanged = () => {
-    voices = speechSynthesis.getVoices();
-  };
+  // Load voices once
+  useEffect(() => {
+    speechSynthesis.onvoiceschanged = () => {
+      voicesRef.current = speechSynthesis.getVoices();
+    };
+    voicesRef.current = speechSynthesis.getVoices();
+  }, []);
 
   const speak = (text, callback) => {
     if (!text) return;
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
-    utterance.voice = voices.find((v) => v.lang === "en-US") || voices[0];
+    utterance.voice =
+      voicesRef.current.find((v) => v.lang === "en-US") || voicesRef.current[0];
     utterance.rate = 1;
     utterance.pitch = 1;
     utterance.volume = 1;
@@ -27,13 +36,23 @@ const Home = () => {
     window.speechSynthesis.speak(utterance);
   };
 
-  const startRecognition = () => {
+  const showMicRestartPrompt = () => {
+    speak("Hey, are you there? Tap the button to continue.");
+    setShowMicPrompt(true);
+  };
+
+  const createRecognition = () => {
     const SpeechRecognition =
       window.SpeechRecognition || window.webkitSpeechRecognition;
-
     const recognition = new SpeechRecognition();
     recognition.continuous = true;
     recognition.lang = "en-US";
+
+    recognition.onstart = () => {
+      isListeningRef.current = true;
+      setShowMicPrompt(false);
+      console.log("Mic started listening...");
+    };
 
     recognition.onresult = async (e) => {
       const transcript = e.results[e.results.length - 1][0].transcript.trim();
@@ -43,29 +62,98 @@ const Home = () => {
         transcript.toLowerCase().includes(userData.assistantName.toLowerCase())
       ) {
         recognition.stop();
+        isListeningRef.current = false;
         const data = await getGeminiResponse(transcript);
         console.log("AI response:", data);
-
-        setTimeout(() => {
-          speak(data.response, () => {
-            recognition.start();
-          });
-        }, 150);
+        handleCommand(data);
       }
     };
 
-    recognition.start();
+    recognition.onend = () => {
+      console.log("Mic stopped — showing prompt");
+      isListeningRef.current = false;
+      showMicRestartPrompt(); // no if(isStarted) check
+    };
+
+    recognition.onerror = (event) => {
+      console.error("Speech recognition error:", event.error);
+      isListeningRef.current = false;
+      if (
+        event.error === "not-allowed" ||
+        event.error === "service-not-allowed"
+      ) {
+        // Permission denied
+        showMicRestartPrompt();
+      } else if (isStarted) {
+        // Other mic issues
+        showMicRestartPrompt();
+      }
+    };
+
+    return recognition;
+  };
+
+  const startRecognition = () => {
+    if (!recognitionRef.current) {
+      recognitionRef.current = createRecognition();
+    }
+    try {
+      recognitionRef.current.start();
+    } catch (e) {
+      console.warn("Recognition start failed:", e);
+      showMicRestartPrompt();
+    }
+
+    // Safety check every 3s
+    if (!checkIntervalRef.current) {
+      checkIntervalRef.current = setInterval(() => {
+        if (isStarted && !isListeningRef.current) {
+          console.log("Safety restart mic...");
+          try {
+            recognitionRef.current.start();
+          } catch {
+            showMicRestartPrompt();
+          }
+        }
+      }, 3000);
+    }
+  };
+
+  const handleCommand = (data) => {
+    const { type, userInput, response } = data;
+
+    speak(response, () => {
+      startRecognition();
+    });
+
+    if (type === "google_search") {
+      window.open(
+        `https://www.google.com/search?q=${encodeURIComponent(userInput)}`,
+        "_blank"
+      );
+    } else if (type === "calculator_open") {
+      window.open(`https://www.google.com/search?q=calculator`, "_blank");
+    } else if (type === "instagram_open") {
+      window.open(`https://www.instagram.com/`, "_blank");
+    } else if (type === "facebook_open") {
+      window.open(`https://www.facebook.com/`, "_blank");
+    } else if (type === "weather_show") {
+      window.open(`https://www.google.com/search?q=weather`, "_blank");
+    } else if (type === "youtube_search" || type === "youtube_play") {
+      window.open(
+        `https://www.youtube.com/results?search_query=${encodeURIComponent(
+          userInput
+        )}`,
+        "_blank"
+      );
+    }
   };
 
   const handleStart = () => {
-    // Unlock TTS
-    const u = new SpeechSynthesisUtterance("Voice enabled");
-    window.speechSynthesis.speak(u);
+    speak("Voice enabled");
     console.log("TTS unlocked");
-
-    // Start listening
-    startRecognition();
     setIsStarted(true);
+    startRecognition();
   };
 
   const handleLogout = async () => {
@@ -73,17 +161,18 @@ const Home = () => {
       await axios.get(`${serverUrl}/api/user/logout`, {
         withCredentials: true
       });
-      setUserData(null);
-      navigate("/sigin");
     } catch (err) {
-      setUserData(null);
       console.log(err);
     }
+    setUserData(null);
+    setIsStarted(false);
+    recognitionRef.current?.stop();
+    clearInterval(checkIntervalRef.current);
+    navigate("/sigin");
   };
 
   return (
     <div className="w-full h-[100vh] bg-gradient-to-t from-black to-[#02023d] flex justify-center items-center flex-col relative">
-      {/* Overlay before starting */}
       {!isStarted && (
         <div className="absolute inset-0 bg-black/80 flex flex-col justify-center items-center z-50">
           <h2 className="text-white text-2xl font-semibold mb-6">
@@ -95,6 +184,19 @@ const Home = () => {
           >
             Start Assistant
           </button>
+        </div>
+      )}
+
+      {/* Floating mic restart prompt */}
+      {showMicPrompt && (
+        <div
+          onClick={() => {
+            startRecognition();
+            setShowMicPrompt(false);
+          }}
+          className="fixed bottom-6 right-6 z-[9999] bg-yellow-500 text-black px-4 py-3 rounded-full shadow-lg cursor-pointer hover:bg-yellow-600 transition flex items-center gap-2"
+        >
+          🎤 Hey, are you there? Tap to continue
         </div>
       )}
 
@@ -128,37 +230,3 @@ const Home = () => {
 };
 
 export default Home;
-
-// const handleCommand = (data) => {
-//   const { type, userInput, response } = data;
-//   speak(response);
-//   console.log(response);
-
-//   if (type === "google_search") {
-//     const query = encodeURIComponent(userInput);
-//     window.open(`https://www.google.com/search?q=${query}`, "_blank");
-//   }
-
-//   if (type === "calculator_open") {
-//     window.open(`https://www.google.com/search?q=calculator`, "_blank");
-//   }
-
-//   if (type === "instagram_open") {
-//     window.open(`https://www.instagram.com/`, "_blank");
-//   }
-
-//   if (type === "facebook_open") {
-//     window.open(`https://www.facebook.com/`, "_blank");
-//   }
-
-//   if (type === "weather_show") {
-//     window.open(`https://www.google.com/search?q=weather`, "_blank");
-//   }
-
-//   if (type === "youtube_search" || type === "youtube_play") {
-//     const query = encodeURIComponent(userInput);
-//     window.open(
-//       `https://wwww.youtube.com/results?search_query=${query}, '_blank`
-//     );
-//   }
-// };
