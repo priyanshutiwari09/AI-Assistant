@@ -235,7 +235,7 @@ const Home = () => {
       {/* 👇 Sidebar menu */}
       {/* 👇 Sidebar menu */}
       {menuOpen && (
-        <div className="fixed top-0 right-0 w-72 h-full bg-black/95 text-white shadow-lg z-[10000] flex flex-col p-6 transition">
+        <div className="fixed top-0 right-0 w-[100vw] h-full bg-[#00000053] backdrop-blur-lg text-white shadow-lg z-[10000] flex flex-col p-6 transition">
           {/* Close */}
           <button className="self-end mb-6" onClick={() => setMenuOpen(false)}>
             <X size={28} />
