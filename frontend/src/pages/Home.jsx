@@ -2,6 +2,9 @@ import { useContext, useState, useEffect, useRef } from "react";
 import { userDataContext } from "../context/UserContext";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import ai from "../assets/ai.gif";
+import userImg from "../assets/user.gif";
+import { Menu, X } from "lucide-react"; // 👈 icons
 
 const Home = () => {
   const { userData, serverUrl, setUserData, getGeminiResponse } =
@@ -10,6 +13,8 @@ const Home = () => {
 
   const [isStarted, setIsStarted] = useState(false);
   const [showMicPrompt, setShowMicPrompt] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false); // 👈 new state
+  const [menuOpen, setMenuOpen] = useState(false); // 👈 menu state
   const voicesRef = useRef([]);
   const recognitionRef = useRef(null);
   const isListeningRef = useRef(false);
@@ -33,14 +38,21 @@ const Home = () => {
     utterance.rate = 1;
     utterance.pitch = 1;
     utterance.volume = 1;
-    utterance.onend = callback;
+
+    // 👇 Track speaking state
+    utterance.onstart = () => setIsSpeaking(true);
+    utterance.onend = () => {
+      setIsSpeaking(false);
+      callback && callback();
+    };
+
     window.speechSynthesis.speak(utterance);
   };
 
   const showMicRestartPrompt = () => {
     console.log("🎤 Hey, are you there? Tap to continue");
-    setShowMicPrompt(true); // 👈 now we actually show UI
-    speak("Hey, are you there? Tap the screen to continue."); // 👈 also speak it out
+    setShowMicPrompt(true);
+    speak("Hey, are you there? Tap the screen to continue.");
   };
 
   const createRecognition = () => {
@@ -78,7 +90,6 @@ const Home = () => {
       isListeningRef.current = false;
 
       if (skipPromptRef.current) {
-        console.log("⚡ Skipping prompt because skipPromptRef = true");
         skipPromptRef.current = false;
         return;
       }
@@ -130,7 +141,6 @@ const Home = () => {
 
   const handleCommand = (data) => {
     const { type, userInput, response } = data;
-
     skipPromptRef.current = true;
 
     speak(response, () => {
@@ -138,7 +148,6 @@ const Home = () => {
       startRecognition();
       setTimeout(() => {
         skipPromptRef.current = false;
-        console.log("🔄 skipPromptRef reset to false");
       }, 500);
     });
 
@@ -166,8 +175,6 @@ const Home = () => {
   };
 
   const handleStart = () => {
-    speak("Voice enabled");
-    console.log("TTS unlocked");
     setIsStarted(true);
     startRecognition();
   };
@@ -189,6 +196,7 @@ const Home = () => {
 
   return (
     <div className="w-full h-[100vh] bg-gradient-to-t from-black to-[#02023d] flex justify-center items-center flex-col relative">
+      {/* Start screen */}
       {!isStarted && (
         <div className="absolute inset-0 bg-black/80 flex flex-col justify-center items-center z-50">
           <h2 className="text-white text-2xl font-semibold mb-6">
@@ -203,7 +211,7 @@ const Home = () => {
         </div>
       )}
 
-      {/* Floating mic restart prompt */}
+      {/* Mic prompt */}
       {showMicPrompt && (
         <div
           onClick={() => {
@@ -216,20 +224,66 @@ const Home = () => {
         </div>
       )}
 
+      {/* 👇 Hamburger button */}
       <button
-        className="min-w-[150px] absolute top-[20px] right-[20px] bg-white text-black text-lg font-semibold rounded-full h-[60px] hover:bg-gray-200 transition"
-        onClick={handleLogout}
+        className="absolute top-6 right-6 z-50 bg-white text-black p-3 rounded-full shadow-md hover:bg-gray-200"
+        onClick={() => setMenuOpen(true)}
       >
-        Logout
+        <Menu size={24} />
       </button>
 
-      <button
-        className="min-w-[150px] absolute py-[10px] px-[20px] top-[100px] right-[20px] mt-4 bg-white text-black text-lg font-semibold rounded-full h-[60px] hover:bg-gray-200 transition"
-        onClick={() => navigate("/customize")}
-      >
-        Customize your Assistant
-      </button>
+      {/* 👇 Sidebar menu */}
+      {/* 👇 Sidebar menu */}
+      {menuOpen && (
+        <div className="fixed top-0 right-0 w-72 h-full bg-black/95 text-white shadow-lg z-[10000] flex flex-col p-6 transition">
+          {/* Close */}
+          <button className="self-end mb-6" onClick={() => setMenuOpen(false)}>
+            <X size={28} />
+          </button>
 
+          {/* Buttons */}
+          <button
+            className="w-full bg-white text-black text-lg font-semibold rounded-full py-3 mb-4 hover:bg-gray-200 transition"
+            onClick={handleLogout}
+          >
+            Log Out
+          </button>
+
+          <button
+            className="w-full bg-white text-black text-lg font-semibold rounded-full py-3 mb-6 hover:bg-gray-200 transition"
+            onClick={() => navigate("/customize")}
+          >
+            Customize your Assistant
+          </button>
+
+          {/* Divider */}
+          <div className="border-t border-gray-700 my-4"></div>
+
+          {/* History Section */}
+          <h2 className="text-lg font-semibold mb-3">🕑 History</h2>
+          <div className="flex-1 overflow-y-auto space-y-3 pr-2 scrollbar-thin scrollbar-thumb-gray-600">
+            {userData?.history && userData.history.length > 0 ? (
+              userData.history.map((item, index) => (
+                <div
+                  key={index}
+                  className="bg-white/10 hover:bg-white/20 p-3 rounded-lg cursor-pointer"
+                  onClick={() => {
+                    // Optional: allow re-running a past query
+                    console.log("Selected history:", item);
+                    // you could also call handleCommand(item) here
+                  }}
+                >
+                  {item.userInput || "Untitled"}
+                </div>
+              ))
+            ) : (
+              <p className="text-gray-400">No history yet</p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Assistant Avatar */}
       <div className="w-[300px] h-[400px] flex justify-center items-center overflow-hidden">
         <img
           src={userData?.assistantImage}
@@ -241,6 +295,15 @@ const Home = () => {
       <h1 className="text-white text-[18px] font-semibold">
         I'm {userData?.assistantName}
       </h1>
+
+      {/* AI/User gif */}
+      {isStarted && (
+        <img
+          src={isSpeaking ? ai : userImg}
+          alt="AI status"
+          className="w-20 h-20 mt-4 rounded-full object-cover shadow-lg"
+        />
+      )}
     </div>
   );
 };
