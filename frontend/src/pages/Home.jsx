@@ -14,6 +14,7 @@ const Home = () => {
   const recognitionRef = useRef(null);
   const isListeningRef = useRef(false);
   const checkIntervalRef = useRef(null);
+  const skipPromptRef = useRef(false);
 
   // Load voices once
   useEffect(() => {
@@ -37,8 +38,9 @@ const Home = () => {
   };
 
   const showMicRestartPrompt = () => {
-    speak("Hey, are you there? Tap the button to continue.");
-    setShowMicPrompt(true);
+    console.log("🎤 Hey, are you there? Tap to continue");
+    setShowMicPrompt(true); // 👈 now we actually show UI
+    speak("Hey, are you there? Tap the screen to continue."); // 👈 also speak it out
   };
 
   const createRecognition = () => {
@@ -61,8 +63,10 @@ const Home = () => {
       if (
         transcript.toLowerCase().includes(userData.assistantName.toLowerCase())
       ) {
+        skipPromptRef.current = true;
         recognition.stop();
         isListeningRef.current = false;
+
         const data = await getGeminiResponse(transcript);
         console.log("AI response:", data);
         handleCommand(data);
@@ -70,9 +74,17 @@ const Home = () => {
     };
 
     recognition.onend = () => {
-      console.log("Mic stopped — showing prompt");
+      console.log("🔴 recognition.onend fired");
       isListeningRef.current = false;
-      showMicRestartPrompt(); // no if(isStarted) check
+
+      if (skipPromptRef.current) {
+        console.log("⚡ Skipping prompt because skipPromptRef = true");
+        skipPromptRef.current = false;
+        return;
+      }
+
+      console.log("💬 No speech detected — showing fallback prompt");
+      showMicRestartPrompt();
     };
 
     recognition.onerror = (event) => {
@@ -82,10 +94,8 @@ const Home = () => {
         event.error === "not-allowed" ||
         event.error === "service-not-allowed"
       ) {
-        // Permission denied
         showMicRestartPrompt();
       } else if (isStarted) {
-        // Other mic issues
         showMicRestartPrompt();
       }
     };
@@ -104,7 +114,6 @@ const Home = () => {
       showMicRestartPrompt();
     }
 
-    // Safety check every 3s
     if (!checkIntervalRef.current) {
       checkIntervalRef.current = setInterval(() => {
         if (isStarted && !isListeningRef.current) {
@@ -122,8 +131,15 @@ const Home = () => {
   const handleCommand = (data) => {
     const { type, userInput, response } = data;
 
+    skipPromptRef.current = true;
+
     speak(response, () => {
+      console.log("✅ AI finished speaking, restarting mic");
       startRecognition();
+      setTimeout(() => {
+        skipPromptRef.current = false;
+        console.log("🔄 skipPromptRef reset to false");
+      }, 500);
     });
 
     if (type === "google_search") {
@@ -194,7 +210,7 @@ const Home = () => {
             startRecognition();
             setShowMicPrompt(false);
           }}
-          className="fixed bottom-6 right-6 z-[9999] bg-yellow-500 text-black px-4 py-3 rounded-full shadow-lg cursor-pointer hover:bg-yellow-600 transition flex items-center gap-2"
+          className="fixed bottom-6 right-6 z-[9999] bg-yellow-500 text-black px-5 py-3 rounded-full shadow-xl cursor-pointer hover:bg-yellow-600 transition flex items-center gap-2 animate-bounce"
         >
           🎤 Hey, are you there? Tap to continue
         </div>
