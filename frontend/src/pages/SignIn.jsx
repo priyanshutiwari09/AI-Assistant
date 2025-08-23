@@ -47,6 +47,7 @@ const SignIn = () => {
     >
       <form
         onSubmit={handleSubmit(onSubmit)}
+        autoComplete="off" // ⬅️ disables form-wide autofill
         className="w-[90%] max-w-[500px] bg-[#00000069] backdrop-blur-md shadow-lg shadow-black flex flex-col items-center justify-center gap-[20px] px-[20px] py-[40px]"
       >
         <h1 className="text-white text-[30px] font-semibold mb-[20px]">
@@ -57,6 +58,7 @@ const SignIn = () => {
         <input
           type="email"
           placeholder="Email"
+          autoComplete="new-email" // ⬅️ prevents saved autofill
           {...register("email", {
             required: "Email is required",
             pattern: {
@@ -75,6 +77,7 @@ const SignIn = () => {
           <input
             type={showPassword ? "text" : "password"}
             placeholder="Password"
+            autoComplete="new-password" // ⬅️ stops browser from saving password
             {...register("password", {
               required: "Password is required",
               minLength: {

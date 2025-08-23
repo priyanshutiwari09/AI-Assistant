@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import ai from "../assets/ai.gif";
 import userImg from "../assets/user.gif";
-import { Menu, X } from "lucide-react"; // 👈 icons
+import { Menu, X } from "lucide-react";
 
 const Home = () => {
   const { userData, serverUrl, setUserData, getGeminiResponse } =
@@ -13,8 +13,11 @@ const Home = () => {
 
   const [isStarted, setIsStarted] = useState(false);
   const [showMicPrompt, setShowMicPrompt] = useState(false);
-  const [isSpeaking, setIsSpeaking] = useState(false); // 👈 new state
-  const [menuOpen, setMenuOpen] = useState(false); // 👈 menu state
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [liveUserText, setLiveUserText] = useState("");
+  const [liveAIText, setLiveAIText] = useState("");
+
   const voicesRef = useRef([]);
   const recognitionRef = useRef(null);
   const isListeningRef = useRef(false);
@@ -39,10 +42,11 @@ const Home = () => {
     utterance.pitch = 1;
     utterance.volume = 1;
 
-    // 👇 Track speaking state
     utterance.onstart = () => setIsSpeaking(true);
     utterance.onend = () => {
       setIsSpeaking(false);
+      // 👉 Clear AI caption when assistant finishes speaking
+      setLiveAIText("");
       callback && callback();
     };
 
@@ -72,6 +76,9 @@ const Home = () => {
       const transcript = e.results[e.results.length - 1][0].transcript.trim();
       console.log("User said:", transcript);
 
+      // 👉 Show live user caption
+      setLiveUserText(transcript);
+
       if (
         transcript.toLowerCase().includes(userData.assistantName.toLowerCase())
       ) {
@@ -81,6 +88,9 @@ const Home = () => {
 
         const data = await getGeminiResponse(transcript);
         console.log("AI response:", data);
+        // 👉 Show AI live caption
+        setLiveAIText(data.response);
+
         handleCommand(data);
       }
     };
@@ -88,6 +98,9 @@ const Home = () => {
     recognition.onend = () => {
       console.log("🔴 recognition.onend fired");
       isListeningRef.current = false;
+
+      // 👉 Clear user live caption when mic stops
+      setLiveUserText("");
 
       if (skipPromptRef.current) {
         skipPromptRef.current = false;
@@ -139,10 +152,11 @@ const Home = () => {
     }
   };
 
-  const handleCommand = (data) => {
+  const handleCommand = async (data) => {
     const { type, userInput, response } = data;
     skipPromptRef.current = true;
 
+    // Speak response
     speak(response, () => {
       console.log("✅ AI finished speaking, restarting mic");
       startRecognition();
@@ -151,6 +165,31 @@ const Home = () => {
       }, 500);
     });
 
+    // 🔹 Save both user & assistant messages to backend
+    try {
+      const res = await axios.post(
+        `${serverUrl}/api/user/update-history`,
+        {
+          userId: userData._id,
+          history: [
+            { role: "user", text: userInput },
+            { role: "assistant", text: response }
+          ]
+        },
+        { withCredentials: true }
+      );
+
+      if (res.data.success) {
+        setUserData((prev) => ({
+          ...prev,
+          history: res.data.history
+        }));
+      }
+    } catch (err) {
+      console.error("❌ Failed to save history:", err);
+    }
+
+    // Handle special commands
     if (type === "google_search") {
       window.open(
         `https://www.google.com/search?q=${encodeURIComponent(userInput)}`,
@@ -203,7 +242,7 @@ const Home = () => {
             Click to Start {userData?.assistantName}
           </h2>
           <button
-            className="bg-white text-black px-6 py-3 rounded-full text-lg font-semibold hover:bg-gray-200 transition"
+            className="bg-white hover:cursor-pointer text-black px-6 py-3 rounded-full text-lg font-semibold hover:bg-gray-200 transition"
             onClick={handleStart}
           >
             Start Assistant
@@ -224,33 +263,35 @@ const Home = () => {
         </div>
       )}
 
-      {/* 👇 Hamburger button */}
+      {/* Hamburger button */}
       <button
-        className="absolute top-6 right-6 z-50 bg-white text-black p-3 rounded-full shadow-md hover:bg-gray-200"
+        className="absolute hover:cursor-pointer top-6 right-6 z-50 bg-white text-black p-3 rounded-full shadow-md hover:bg-gray-200"
         onClick={() => setMenuOpen(true)}
       >
         <Menu size={24} />
       </button>
 
-      {/* 👇 Sidebar menu */}
-      {/* 👇 Sidebar menu */}
+      {/* Sidebar menu */}
       {menuOpen && (
-        <div className="fixed top-0 right-0 w-[100vw] h-full bg-[#00000053] backdrop-blur-lg text-white shadow-lg z-[10000] flex flex-col p-6 transition">
+        <div className="fixed top-0 right-0 lg:w-[400px] md:w-[400px] w-full h-full bg-gray-900/95 backdrop-blur-xl text-white shadow-2xl z-[10000] flex flex-col p-6 transition-all duration-300 ease-in-out">
           {/* Close */}
-          <button className="self-end mb-6" onClick={() => setMenuOpen(false)}>
+          <button
+            className="self-end mb-6 hover:cursor-pointer hover:text-red-400 transition"
+            onClick={() => setMenuOpen(false)}
+          >
             <X size={28} />
           </button>
 
           {/* Buttons */}
           <button
-            className="w-full bg-white text-black text-lg font-semibold rounded-full py-3 mb-4 hover:bg-gray-200 transition"
+            className="w-full hover:cursor-pointer bg-white text-black text-lg font-semibold rounded-full py-3 mb-4 hover:bg-gray-200 transition"
             onClick={handleLogout}
           >
             Log Out
           </button>
 
           <button
-            className="w-full bg-white text-black text-lg font-semibold rounded-full py-3 mb-6 hover:bg-gray-200 transition"
+            className="w-full hover:cursor-pointer bg-white text-black text-lg font-semibold rounded-full py-3 mb-6 hover:bg-gray-200 transition"
             onClick={() => navigate("/customize")}
           >
             Customize your Assistant
@@ -266,14 +307,13 @@ const Home = () => {
               userData.history.map((item, index) => (
                 <div
                   key={index}
-                  className="bg-white/10 hover:bg-white/20 p-3 rounded-lg cursor-pointer"
-                  onClick={() => {
-                    // Optional: allow re-running a past query
-                    console.log("Selected history:", item);
-                    // you could also call handleCommand(item) here
-                  }}
+                  className={`p-3 rounded-lg max-w-[85%] break-words ${
+                    item.role === "user"
+                      ? "bg-blue-600 text-white ml-auto"
+                      : "bg-gray-700 text-white mr-auto"
+                  }`}
                 >
-                  {item.userInput || "Untitled"}
+                  {item.text}
                 </div>
               ))
             ) : (
@@ -287,8 +327,8 @@ const Home = () => {
       <div className="w-[300px] h-[400px] flex justify-center items-center overflow-hidden">
         <img
           src={userData?.assistantImage}
-          alt=""
-          className="h-full object-cover rounded-4xl shadow-lg"
+          alt="assistant avatar"
+          className="h-full object-cover rounded-3xl shadow-lg"
         />
       </div>
 
@@ -303,6 +343,24 @@ const Home = () => {
           alt="AI status"
           className="w-20 h-20 mt-4 rounded-full object-cover shadow-lg"
         />
+      )}
+
+      {/* Live captions */}
+      {isStarted && (
+        <div className="mt-3 w-full px-4 flex flex-col items-center">
+          <div className="max-w-lg w-full bg-black/40 rounded-xl p-3 sm:p-4 shadow-md text-center">
+            {liveUserText && (
+              <p className="text-sm sm:text-base text-blue-400 font-medium break-words">
+                👤 {liveUserText}
+              </p>
+            )}
+            {liveAIText && (
+              <p className="text-sm sm:text-base text-green-400 font-medium mt-2 break-words">
+                🤖 {liveAIText}
+              </p>
+            )}
+          </div>
+        </div>
       )}
     </div>
   );
