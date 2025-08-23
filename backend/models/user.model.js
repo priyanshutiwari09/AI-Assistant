@@ -23,7 +23,12 @@ const userSchema = mongoose.Schema(
     assistantImage: {
       type: String
     },
-    history: [{ type: String }]
+    history: [
+      {
+        role: { type: String, enum: ["user", "assistant"], required: true },
+        text: { type: String, required: true }
+      }
+    ]
   },
   {
     timestamps: true

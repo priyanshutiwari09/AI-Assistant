@@ -81,7 +81,13 @@ exports.login = async (req, res) => {
 // Logout controller
 exports.logout = async (req, res) => {
   try {
-    res.clearCookie("token");
+    res.clearCookie("token", {
+      httpOnly: true,
+      sameSite: "strict",
+      secure: false, // must match what you used at login
+      path: "/" // default path must be specified here too
+    });
+
     return res.status(200).json({ message: "Logout Successful" });
   } catch (err) {
     return res
@@ -197,5 +203,46 @@ exports.askToAssistant = async (req, res) => {
     }
   } catch (error) {
     return res.status(500).json({ response: "ask assistant error" });
+  }
+};
+
+// Save user & assistant chat in history
+
+// updateHistory.js (controller)
+exports.updateHistory = async (req, res) => {
+  try {
+    const { userId, history } = req.body;
+
+    if (!userId || !history || !Array.isArray(history)) {
+      return res.status(400).json({
+        success: false,
+        message: "User ID and history array are required"
+      });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
+    }
+
+    // ✅ Push each message into history
+    history.forEach((msg) => {
+      if (msg.role && msg.text) {
+        user.history.push(msg);
+      }
+    });
+
+    await user.save();
+
+    res.json({
+      success: true,
+      message: "History updated",
+      history: user.history
+    });
+  } catch (error) {
+    console.error("Error updating history:", error);
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };
